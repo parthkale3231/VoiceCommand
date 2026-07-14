@@ -4,7 +4,8 @@
  */
 export const processTranscript = async (transcript, language = 'en-US') => {
   try {
-    const response = await fetch('/api/process-command', {
+    const API_BASE = import.meta.env.VITE_API_URL || '/api';
+    const response = await fetch(`${API_BASE}/process-command`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

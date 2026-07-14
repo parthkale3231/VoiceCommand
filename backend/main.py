@@ -21,7 +21,8 @@ load_dotenv()
 app = FastAPI()
 
 # MongoDB setup
-mongo_client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://localhost:27017")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+mongo_client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
 db = mongo_client.voicecart
 items_collection = db.items
 history_collection = db.history
