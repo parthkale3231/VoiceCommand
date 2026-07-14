@@ -1,19 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --bg-dark: #0f172a;
-  --bg-card: rgba(30, 41, 59, 0.7);
-  --bg-card-hover: rgba(51, 65, 85, 0.8);
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
+  --bg-dark: #09090b;
+  --bg-card: rgba(24, 24, 27, 0.65);
+  --bg-card-hover: rgba(39, 39, 42, 0.85);
+  --text-main: #fafafa;
+  --text-muted: #a1a1aa;
   --accent-primary: #8b5cf6;
-  --accent-secondary: #ec4899;
+  --accent-secondary: #06b6d4;
   --accent-gradient: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
   --danger: #ef4444;
   --success: #10b981;
   
-  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
-  --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
 }
 
 * {
@@ -28,8 +28,8 @@ body {
   color: var(--text-main);
   min-height: 100vh;
   background-image: 
-    radial-gradient(at 0% 0%, rgba(139, 92, 246, 0.15) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.15) 0px, transparent 50%);
+    radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.12), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(6, 182, 212, 0.12), transparent 25%);
   background-attachment: fixed;
   overflow-x: hidden;
 }
@@ -96,13 +96,30 @@ body {
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.5), inset 0 2px 5px rgba(255,255,255,0.3);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   z-index: 2;
+  position: relative;
+}
+
+.mic-button::before {
+  content: '';
+  position: absolute;
+  top: -5px; right: -5px; bottom: -5px; left: -5px;
+  background: var(--accent-gradient);
+  border-radius: 50%;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  filter: blur(10px);
 }
 
 .mic-button:hover {
-  transform: scale(1.05);
+  transform: scale(1.08);
+}
+
+.mic-button:hover::before {
+  opacity: 0.6;
 }
 
 .mic-button:active {
@@ -110,15 +127,15 @@ body {
 }
 
 .mic-button.listening {
-  animation: pulse 1.5s infinite;
+  animation: pulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
 }
 
 @keyframes pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7);
   }
-  70% {
-    box-shadow: 0 0 0 20px rgba(139, 92, 246, 0);
+  50% {
+    box-shadow: 0 0 0 25px rgba(139, 92, 246, 0);
   }
   100% {
     box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);

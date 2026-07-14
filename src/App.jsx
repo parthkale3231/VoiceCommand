@@ -4,6 +4,7 @@ import VoiceController from './components/VoiceController';
 import ShoppingList from './components/ShoppingList';
 import Suggestions from './components/Suggestions';
 import SearchResults from './components/SearchResults';
+import RecipeGenerator from './components/RecipeGenerator';
 import { useShopping } from './context/ShoppingContext';
 
 const StatusBanner = () => {
@@ -19,6 +20,8 @@ const StatusBanner = () => {
 };
 
 function App() {
+  const { t } = useShopping();
+
   return (
     <div className="app-container">
       <header className="header">
@@ -26,7 +29,7 @@ function App() {
           <ShoppingBag size={28} color="var(--accent-primary)" />
           VoiceCart
         </h1>
-        <p>Your smart, voice-activated shopping assistant</p>
+        <p>{t('subtitle')}</p>
       </header>
 
       <StatusBanner />
@@ -38,9 +41,11 @@ function App() {
       <Suggestions />
 
       <div style={{ marginTop: '1rem' }}>
-        <h2 className="section-title">My List</h2>
+        <h2 className="section-title">{t('myList')}</h2>
         <ShoppingList />
       </div>
+
+      <RecipeGenerator />
     </div>
   );
 }

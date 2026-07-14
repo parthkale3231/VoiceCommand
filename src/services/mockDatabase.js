@@ -27,21 +27,17 @@ export const MOCK_CATALOG = [
   { id: '15', name: 'toothpaste', category: CATEGORIES.OTHER, price: 4.00, substitutes: ['mouthwash'] }
 ];
 
-export const MOCK_HISTORY = [
-  'milk', 'eggs', 'bread', 'bananas'
-];
-
-export const getSuggestions = (currentList) => {
-  const suggestions = [];
-  
-  // 1. Based on history (items user frequently buys but not in current list)
+export const getSuggestions = (currentList, dynamicHistory = []) => {
   const currentItemNames = currentList.map(i => i.name.toLowerCase());
-  const missingFromHistory = MOCK_HISTORY.filter(h => !currentItemNames.includes(h));
+  const suggestions = [];
+
+  // 1. Based on history
+  const missingFromHistory = dynamicHistory.filter(h => !currentItemNames.includes(h));
   if (missingFromHistory.length > 0) {
     suggestions.push({
       type: 'history',
       reason: 'Frequently bought',
-      item: MOCK_CATALOG.find(i => i.name === missingFromHistory[0])
+      item: MOCK_CATALOG.find(i => i.name === missingFromHistory[0]) || { name: missingFromHistory[0], category: CATEGORIES.OTHER }
     });
   }
 
@@ -64,6 +60,7 @@ export const getSuggestions = (currentList) => {
         suggestions.push({
           type: 'substitute',
           reason: `Instead of ${listItem.name}?`,
+          originalItem: listItem.name,
           item: MOCK_CATALOG.find(i => i.name === subName) || { name: subName, category: CATEGORIES.OTHER }
         });
         break; // Just one substitute suggestion is enough to not overwhelm

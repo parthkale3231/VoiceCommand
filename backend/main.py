@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import motor.motor_asyncio
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +20,12 @@ load_dotenv()
 
 app = FastAPI()
 
+# MongoDB setup
+mongo_client = motor.motor_asyncio.AsyncIOMotorClient("mongodb://localhost:27017")
+db = mongo_client.voicecart
+items_collection = db.items
+history_collection = db.history
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -31,6 +38,10 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 class CommandRequest(BaseModel):
     transcript: str
+    language: str = "en-US"
+
+class RecipeRequest(BaseModel):
+    items: list[str]
     language: str = "en-US"
 
 class ProcessedCommand(BaseModel):
@@ -77,13 +88,28 @@ def fallback_parser(transcript: str, language: str = "en-US") -> dict:
     message = "I'm not sure how to handle that."
     
     # Simple multilingual keywords for basic offline support
-    search_keywords = ['find', 'search', 'looking', 'buscar', 'encuentra', 'chercher', 'trouver', 'suchen']
-    remove_keywords = ['remove', 'delete', 'take off', 'eliminar', 'quitar', 'borrar', 'supprimer', 'enlever', 'entfernen']
-    update_keywords = ['update', 'change', 'actualizar', 'cambiar', 'modifier', 'changer', 'ändern']
-    clear_keywords = ['clear', 'empty', 'vaciar', 'limpiar', 'vider', 'leeren']
-    check_keywords = ['check', 'do i have', 'comprobar', 'tengo', 'vérifier', 'est-ce que j\'ai', 'prüfen']
-    add_keywords = ['add', 'buy', 'i need', 'añadir', 'comprar', 'necesito', 'ajouter', 'acheter', 'j\'ai besoin', 'hinzufügen', 'kaufen']
+    search_keywords = ['find', 'search', 'looking', 'buscar', 'encuentra', 'chercher', 'trouver', 'suchen', 'खोजें', 'ढूंढें']
+    remove_keywords = ['remove', 'delete', 'take off', 'eliminar', 'quitar', 'borrar', 'supprimer', 'enlever', 'entfernen', 'हटाएं', 'निकालें', 'निकाल दे', 'निकाल', 'हटा', 'हटाओ', 'निकालो']
+    update_keywords = ['update', 'change', 'actualizar', 'cambiar', 'modifier', 'changer', 'ändern', 'बदलें', 'अपडेट']
+    clear_keywords = ['clear', 'empty', 'vaciar', 'limpiar', 'vider', 'leeren', 'साफ़', 'खाली']
+    check_keywords = ['check', 'do i have', 'comprobar', 'tengo', 'vérifier', 'est-ce que j\'ai', 'prüfen', 'चेक', 'क्या मेरे पास']
+    add_keywords = ['add', 'buy', 'i need', 'añadir', 'comprar', 'necesito', 'ajouter', 'acheter', 'j\'ai besoin', 'hinzufügen', 'kaufen', 'जोड़ें', 'खरीदें', 'चाहिए', 'डाल', 'डालो', 'लाओ']
     
+    # Convert common text numbers to digits for parsing
+    number_words = {
+        'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
+        'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
+        'uno': '1', 'dos': '2', 'tres': '3', 'cuatro': '4', 'cinco': '5',
+        'seis': '6', 'siete': '7', 'ocho': '8', 'nueve': '9', 'diez': '10',
+        'un': '1', 'deux': '2', 'trois': '3', 'quatre': '4', 'cinq': '5',
+        'ein': '1', 'zwei': '2', 'drei': '3', 'vier': '4', 'fünf': '5',
+        'एक': '1', 'दो': '2', 'तीन': '3', 'चार': '4', 'पांच': '5',
+        'dozen': '12', 'dozens': '12', 'docena': '12', 'douzaine': '12', 'दर्जन': '12'
+    }
+    
+    # Pre-process multi-word numbers
+    text = text.replace('a dozen', '12')
+
     if any(p in text for p in clear_keywords):
         intent = "CLEAR"
         message = "List cleared." if "en" in language else "Lista vaciada." if "es" in language else "Liste vidée." if "fr" in language else "Liste geleert."
@@ -122,7 +148,7 @@ def fallback_parser(transcript: str, language: str = "en-US") -> dict:
         for kw in remove_keywords:
             item = item.replace(kw, '')
         item = item.strip()
-        message = f"Removed {item} from your list." if "en" in language else f"Se ha eliminado {item}." if "es" in language else f"{item} retiré."
+        message = f"Removed {item} from your list." if "en" in language else f"Se ha eliminado {item}." if "es" in language else f"{item} retiré." if "fr" in language else f"{item} हटा दिया गया।" if "hi" in language else f"Removed {item}."
     else:
         intent = "ADD"
         item = text
@@ -133,7 +159,29 @@ def fallback_parser(transcript: str, language: str = "en-US") -> dict:
         if qty_match:
             quantity = int(qty_match.group(1))
             item = item.replace(qty_match.group(0), '').strip()
-        message = f"Added {quantity} {item} to your list." if "en" in language else f"Añadido {quantity} {item}." if "es" in language else f"Ajouté {quantity} {item}."
+        message = f"Added {quantity} {item} to your list." if "en" in language else f"Añadido {quantity} {item}." if "es" in language else f"Ajouté {quantity} {item}." if "fr" in language else f"{quantity} {item} जोड़े गए।" if "hi" in language else f"Added {quantity} {item}."
+        
+    # Translate item to English if needed for internal standardization
+    hi_to_en = {
+        'केला': 'banana', 'केले': 'banana',
+        'सेब': 'apples', 'सेबो': 'apples',
+        'दूध': 'milk',
+        'अंडा': 'eggs', 'अंडे': 'eggs',
+        'रोटी': 'bread',
+        'चिकन': 'chicken breast',
+        'चावल': 'rice',
+        'पास्ता': 'pasta',
+        'पानी': 'water',
+        'स्ट्रॉबेरी': 'strawberries'
+    }
+    
+    # Clean up filler words
+    for filler in ['अभी', 'को', 'से', 'मेरे', 'लिए', 'a']:
+        # Be careful not to replace 'a' inside words. Only whole words.
+        item = re.sub(r'\b' + filler + r'\b', '', item, flags=re.IGNORECASE).strip()
+        
+    if item in hi_to_en:
+        item = hi_to_en[item]
         
     return {
         "intent": intent,
@@ -202,6 +250,113 @@ async def process_command(request: CommandRequest):
         data["message"] = msg
 
     return data
+
+class ItemModel(BaseModel):
+    id: str
+    name: str
+    quantity: int
+    category: str
+
+@app.get("/api/items")
+async def get_items():
+    items = []
+    async for item in items_collection.find({}, {"_id": 0}):
+        items.append(item)
+    return items
+
+@app.post("/api/items")
+async def add_item(item: ItemModel):
+    existing = await items_collection.find_one({"id": item.id})
+    if existing:
+        await items_collection.update_one({"id": item.id}, {"$set": item.model_dump()})
+    else:
+        await items_collection.insert_one(item.model_dump())
+    return {"status": "success"}
+
+@app.put("/api/items/{item_id}")
+async def update_item(item_id: str, item: ItemModel):
+    await items_collection.update_one({"id": item_id}, {"$set": item.model_dump()})
+    return {"status": "success"}
+
+@app.delete("/api/items/{item_id}")
+async def delete_item(item_id: str):
+    await items_collection.delete_one({"id": item_id})
+    return {"status": "success"}
+
+@app.delete("/api/items")
+async def clear_items():
+    items_to_history = []
+    async for item in items_collection.find({}, {"_id": 0}):
+        existing_hist = await history_collection.find_one({"name": item["name"]})
+        if not existing_hist:
+            items_to_history.append({"name": item["name"], "category": item.get("category", "other")})
+            
+    if items_to_history:
+        await history_collection.insert_many(items_to_history)
+
+    await items_collection.delete_many({})
+    return {"status": "success"}
+
+@app.get("/api/history")
+async def get_history():
+    history = []
+    async for item in history_collection.find({}, {"_id": 0}):
+        history.append(item)
+    return history
+
+@app.post("/api/recipe")
+async def generate_recipe(request: RecipeRequest):
+    if not GEMINI_API_KEY or GEMINI_API_KEY == "your_api_key_here":
+        return {
+            "recipe_name": "API Key Required",
+            "recipe_description": "Please provide a valid Gemini API key in the backend/.env file to generate recipes.",
+            "missing_ingredients": []
+        }
+        
+    try:
+        items_list = ", ".join(request.items)
+        prompt = f"""
+        You are a creative chef. The user has the following ingredients in their shopping list: {items_list}.
+        Suggest a simple, delicious recipe they can make that uses at least some of these ingredients.
+        Also, identify any missing ingredients they need to buy to complete the recipe.
+        The user's preferred language is {request.language}.
+        
+        Return ONLY a JSON object matching this schema exactly, with NO markdown formatting:
+        {{
+            "recipe_name": "String (Name of the recipe in the user's language)",
+            "recipe_description": "String (Short instructions or description in the user's language)",
+            "missing_ingredients": ["ingredient1", "ingredient2"] (List of missing ingredients in English for standardization, singular form)
+        }}
+        """
+        
+        if USE_NEW_SDK:
+            client = genai.Client(api_key=GEMINI_API_KEY)
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=[prompt]
+            )
+        else:
+            genai_old.configure(api_key=GEMINI_API_KEY)
+            model = genai_old.GenerativeModel('gemini-2.5-flash')
+            response = model.generate_content(prompt)
+            
+        text = response.text.strip()
+        
+        if text.startswith("```json"):
+            text = text[7:]
+        if text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+            
+        return json.loads(text)
+    except Exception as e:
+        print(f"Recipe Generation Error: {e}")
+        return {
+            "recipe_name": "Error Generating Recipe",
+            "recipe_description": str(e),
+            "missing_ingredients": []
+        }
 
 if __name__ == "__main__":
     import uvicorn

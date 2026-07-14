@@ -3,7 +3,7 @@ import { Search, X, Plus } from 'lucide-react';
 import { useShopping } from '../context/ShoppingContext';
 
 const SearchResults = () => {
-  const { searchResults, clearSearch, addItem } = useShopping();
+  const { searchResults, clearSearch, addItem, t } = useShopping();
 
   if (!searchResults) return null;
 
@@ -12,8 +12,8 @@ const SearchResults = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h3 className="section-title" style={{ margin: 0 }}>
           <Search size={20} color="var(--accent-primary)" />
-          Search: "{searchResults.query}"
-          {searchResults.maxPrice && <span className="category-tag">Under ${searchResults.maxPrice}</span>}
+          {t('search')}: "{searchResults.query}"
+          {searchResults.maxPrice && <span className="category-tag">{t('under')} ${searchResults.maxPrice}</span>}
         </h3>
         <button onClick={clearSearch} className="icon-btn" aria-label="Close search">
           <X size={20} />
@@ -21,7 +21,7 @@ const SearchResults = () => {
       </div>
 
       {searchResults.results.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>No items found in catalog.</p>
+        <p style={{ color: 'var(--text-muted)' }}>{t('noItemsFound')}</p>
       ) : (
         <ul className="item-list">
           {searchResults.results.map((item) => (
@@ -29,7 +29,7 @@ const SearchResults = () => {
               <div className="item-details">
                 <span className="item-name">{item.name}</span>
                 <div className="item-meta">
-                  <span className="category-tag">{item.category}</span>
+                  <span className="category-tag">{t(`categories.${item.category}`)}</span>
                   <span>${item.price.toFixed(2)}</span>
                 </div>
               </div>
@@ -41,7 +41,7 @@ const SearchResults = () => {
                 className="icon-btn" 
                 style={{ color: 'var(--success)' }}
               >
-                <Plus size={20} /> Add
+                <Plus size={20} /> {t('add')}
               </button>
             </li>
           ))}

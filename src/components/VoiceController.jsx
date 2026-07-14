@@ -7,7 +7,7 @@ const VoiceController = () => {
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const { language, addItem, removeItem, performSearch, showStatus, setLanguage } = useShopping();
+  const { language, addItem, removeItem, performSearch, updateItemByName, clearList, showStatus, setLanguage, t } = useShopping();
   
   const recognitionRef = useRef(null);
 
@@ -81,9 +81,16 @@ const VoiceController = () => {
     if (intent === 'ADD' && item) {
       addItem(item, quantity, category);
     } else if (intent === 'REMOVE' && item) {
-      removeItem(item);
+      removeItem(item, quantity);
     } else if (intent === 'SEARCH' && item) {
       performSearch(item, maxPrice);
+    } else if (intent === 'UPDATE' && item) {
+      updateItemByName(item, quantity);
+      showStatus(message || `Updated ${item} to ${quantity}.`);
+    } else if (intent === 'CLEAR') {
+      clearList();
+    } else if (intent === 'CHECK') {
+      showStatus(message || `Checking for ${item}...`, 'success');
     } else {
       showStatus(message || "Didn't understand that.", 'error');
     }
@@ -109,6 +116,7 @@ const VoiceController = () => {
         <option value="en-US">English</option>
         <option value="es-ES">Español</option>
         <option value="fr-FR">Français</option>
+        <option value="hi-IN">हिन्दी (Hindi)</option>
       </select>
 
       <button 
@@ -125,7 +133,7 @@ const VoiceController = () => {
           <p className="transcript-text">"{transcript}"</p>
         ) : (
           <p className="transcript-placeholder">
-            {isProcessing ? "Analyzing command..." : (isListening ? "Listening..." : "Tap to speak (e.g., 'Add 2 apples')")}
+            {isProcessing ? t('analyzing') : (isListening ? t('listening') : t('tapToSpeak'))}
           </p>
         )}
       </div>
